@@ -1,14 +1,14 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class Pong : MonoBehaviour
+public class Pong_PlayerPaddle : MonoBehaviour
 {
     [SerializeField] private RectTransform _playerPaddle;
     [SerializeField] private float _movementSpeed = 500f;
     private float minY = -185f;
     private float maxY = 185f;
 
-    void Update()
+    private void Update()
     {
         Vector2 pos = _playerPaddle.anchoredPosition;
         float moveDirection = 0f;
