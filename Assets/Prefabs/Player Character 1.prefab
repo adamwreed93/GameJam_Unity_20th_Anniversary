@@ -514,8 +514,8 @@ Transform:
   - {fileID: 2035958330605034500}
   - {fileID: 7448505133524673501}
   - {fileID: 262482480742351750}
-  - {fileID: 8201578300196670358}
   - {fileID: 8132037213402633400}
+  - {fileID: 8201578300196670358}
   - {fileID: 7346758150987520133}
   - {fileID: 4420987833813530658}
   m_Father: {fileID: 733763792187935853}
@@ -1090,12 +1090,12 @@ GameObject:
   - component: {fileID: 6359608693364204556}
   - component: {fileID: 136243646349425314}
   m_Layer: 0
-  m_Name: Eye - Pupil Dots (1)
+  m_Name: Eye - Pupil Dots (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &8201578300196670358
 Transform:
   m_ObjectHideFlags: 0
@@ -1423,7 +1423,7 @@ GameObject:
   - component: {fileID: 2983672857222404582}
   - component: {fileID: 5737507141928526471}
   m_Layer: 0
-  m_Name: Eye - Pupil Dots (2)
+  m_Name: Eye - Pupil Dots (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
