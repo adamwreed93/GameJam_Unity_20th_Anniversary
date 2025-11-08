@@ -883,8 +883,8 @@ Transform:
   m_GameObject: {fileID: 5167256630421820172}
   serializedVersion: 2
   m_LocalRotation: {x: -0.005112812, y: -0.14736064, z: 0.22525397, w: 0.9630781}
-  m_LocalPosition: {x: 0.766, y: 0.301, z: 0.256}
-  m_LocalScale: {x: 0.38771027, y: 0.4911137, z: 0.6237287}
+  m_LocalPosition: {x: 0.67, y: 0.278, z: 0.192}
+  m_LocalScale: {x: 0.5719195, y: 0.4911137, z: 0.6237287}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 3722506987566327250}
@@ -1090,7 +1090,7 @@ GameObject:
   - component: {fileID: 6359608693364204556}
   - component: {fileID: 136243646349425314}
   m_Layer: 0
-  m_Name: Eye - Pupil Dots
+  m_Name: Eye - Pupil Dots (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1423,7 +1423,7 @@ GameObject:
   - component: {fileID: 2983672857222404582}
   - component: {fileID: 5737507141928526471}
   m_Layer: 0
-  m_Name: Eye - Pupil Dots (1)
+  m_Name: Eye - Pupil Dots (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
