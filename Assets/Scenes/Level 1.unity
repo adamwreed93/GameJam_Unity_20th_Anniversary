@@ -807,7 +807,7 @@ MonoBehaviour:
   _deathCloudSpawnIntervalScale: 0.05
   _deathFadeDuration: 2
   _deathBlackHoldTime: 0.5
-  _deathPhaseDuration: 3
+  _deathPhaseDuration: 1.5
 --- !u!4 &761576896
 Transform:
   m_ObjectHideFlags: 0

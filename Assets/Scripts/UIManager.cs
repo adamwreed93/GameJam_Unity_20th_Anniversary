@@ -81,6 +81,9 @@ public class UIManager : MonoBehaviour
     private readonly List<RectTransform> _activeClouds = new List<RectTransform>();
     private Coroutine _cloudSpawnerRoutine;
 
+    [SerializeField] private Color _dayCloudColor = new Color32(255, 255, 255, 255);
+    [SerializeField] private Color _nightCloudColor = new Color32(125, 150, 220, 255);
+
     // ---------------------------------------------------------------------
     // Death Effects (temporary speed-up and fade)
     // ---------------------------------------------------------------------
@@ -148,26 +151,14 @@ public class UIManager : MonoBehaviour
         if (_deathEffectsActive) return;
         _deathEffectsActive = true;
 
-        // Save originals
+        // Save originals now (before we boost)
         _origDayNightSpeed = _dayNightSpeed;
         _origCloudSpeed = _cloudSpeed;
         _origSpawnMin = _cloudSpawnRateMin;
         _origSpawnMax = _cloudSpawnRateMax;
 
-        // Apply boosts FIRST so the speed-up is immediate (sun/moon + colors + clouds)
-        _dayNightSpeed *= _deathDayNightSpeedMultiplier;   // try 3–5 in Inspector to see it clearly
-        _cloudSpeed *= _deathCloudSpeedMultiplier;
-        _cloudSpawnRateMin *= _deathCloudSpawnIntervalScale;
-        _cloudSpawnRateMax *= _deathCloudSpawnIntervalScale;
-
-        // Restart spawner so new interval applies right now
-        if (_cloudSpawnerRoutine != null) StopCoroutine(_cloudSpawnerRoutine);
-        _cloudSpawnerRoutine = StartCoroutine(CloudSpawner());
-
-        // Now play the fade (model swap happens while black)
+        // Start fade; boosts will be applied when fully black inside the fade routine
         FadeBlackScreen(_deathFadeDuration);
-
-        StartCoroutine(RestoreAfter(_deathPhaseDuration));
     }
 
     // ---------------------------------------------------------------------
@@ -204,6 +195,17 @@ public class UIManager : MonoBehaviour
                 _sunInstance.gameObject.SetActive(false);
                 _moonInstance.gameObject.SetActive(true);
                 MoveCelestial(_moonInstance, progress);
+            }
+        }
+
+        Color currentCloudColor = Color.Lerp(_dayCloudColor, _nightCloudColor, colorBlend);
+        foreach (RectTransform cloud in _activeClouds)
+        {
+            if (cloud != null)
+            {
+                Image image = cloud.GetComponent<Image>();
+                if (image != null)
+                    image.color = currentCloudColor;
             }
         }
     }
@@ -298,6 +300,22 @@ public class UIManager : MonoBehaviour
         StartCoroutine(FadeBlackScreenRoutine(totalDuration));
     }
 
+    private void ApplyDeathBoostsAndStartRestore()
+    {
+        // Apply boosts (player will not see the change yet because screen is black)
+        _dayNightSpeed *= _deathDayNightSpeedMultiplier;  // colors + sun/moon speed together
+        _cloudSpeed *= _deathCloudSpeedMultiplier;
+        _cloudSpawnRateMin *= _deathCloudSpawnIntervalScale;
+        _cloudSpawnRateMax *= _deathCloudSpawnIntervalScale;
+
+        // Restart spawner so new intervals apply immediately
+        if (_cloudSpawnerRoutine != null) StopCoroutine(_cloudSpawnerRoutine);
+        _cloudSpawnerRoutine = StartCoroutine(CloudSpawner());
+
+        // Begin timer to return to normal
+        StartCoroutine(RestoreAfter(_deathPhaseDuration));
+    }
+
     private IEnumerator FadeBlackScreenRoutine(float totalDuration)
     {
         float holdTime = _deathBlackHoldTime;
@@ -319,6 +337,9 @@ public class UIManager : MonoBehaviour
 
         // Swap model while black
         AdvancePlayerModel();
+
+        // APPLY BOOSTS NOW (player can't see the speed-up yet)
+        ApplyDeathBoostsAndStartRestore();
 
         // Hold at black
         yield return new WaitForSeconds(holdTime);
