@@ -4,16 +4,17 @@ using UnityEngine.InputSystem;
 public class Asteroids_Ship : MonoBehaviour
 {
     [Header("Scene References")]
-    [SerializeField] private RectTransform _playfield;     // TV game area (RectTransform)
-    [SerializeField] private RectTransform _ship;          // UI Image for the ship
-    [SerializeField] private RectTransform _bulletPrefab;  // UI Image prefab for the bullet
-    [SerializeField] private Canvas _canvas;               // Canvas containing the playfield
+    [SerializeField] private RectTransform _playfield;
+    [SerializeField] private RectTransform _ship;
+    [SerializeField] private RectTransform _bulletPrefab;
+    [SerializeField] private RectTransform _bulletContainer;
+    [SerializeField] private Canvas _canvas;
 
     [Header("Shooting")]
     [SerializeField] private float _bulletSpeed = 900f;
     [SerializeField] private float _bulletLifetime = 5f;
 
-    private Vector2 _lastAimDir = Vector2.up; // default facing up
+    private Vector2 _lastAimDir = Vector2.up;
 
     private void Awake()
     {
@@ -22,12 +23,26 @@ public class Asteroids_Ship : MonoBehaviour
             _canvas = _playfield.GetComponentInParent<Canvas>();
     }
 
+    private void OnEnable()
+    {
+        // Clear any leftover bullets from previous rounds
+        if (_bulletContainer != null)
+        {
+            for (int i = _bulletContainer.childCount - 1; i >= 0; i--)
+            {
+                Transform child = _bulletContainer.GetChild(i);
+                if (child != null)
+                    Destroy(child.gameObject);
+            }
+        }
+    }
+
+
     private void Update()
     {
         if (_ship == null || _playfield == null) return;
         if (Mouse.current == null) return;
 
-        // Convert screen mouse pos -> playfield local (anchored) pos
         Vector2 localMouse;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             _playfield,
@@ -36,14 +51,12 @@ public class Asteroids_Ship : MonoBehaviour
             out localMouse
         );
 
-        // ROTATE ONLY (do NOT move ship)
         Vector2 dir = (localMouse - _ship.anchoredPosition);
         if (dir.sqrMagnitude > 0.0001f) _lastAimDir = dir.normalized;
 
-        float angle = Mathf.Atan2(_lastAimDir.y, _lastAimDir.x) * Mathf.Rad2Deg - 90f; // sprite faces up
+        float angle = Mathf.Atan2(_lastAimDir.y, _lastAimDir.x) * Mathf.Rad2Deg - 90f;
         _ship.localEulerAngles = new Vector3(0f, 0f, angle);
 
-        // Shoot on left click (just-pressed)
         if (Mouse.current.leftButton.wasPressedThisFrame)
             Fire(_lastAimDir);
     }
@@ -52,9 +65,11 @@ public class Asteroids_Ship : MonoBehaviour
     {
         if (_bulletPrefab == null || _playfield == null) return;
 
-        RectTransform bullet = Instantiate(_bulletPrefab, _playfield);
+        // Spawn bullet inside Bullet Container if assigned
+        RectTransform parent = _bulletContainer != null ? _bulletContainer : _playfield;
+        RectTransform bullet = Instantiate(_bulletPrefab, parent);
         bullet.anchoredPosition = _ship.anchoredPosition;
-        bullet.localEulerAngles = _ship.localEulerAngles; // purely visual
+        bullet.localEulerAngles = _ship.localEulerAngles;
 
         var comp = bullet.GetComponent<Asteroids_Bullet>();
         if (comp == null) comp = bullet.gameObject.AddComponent<Asteroids_Bullet>();

@@ -7,9 +7,10 @@ public class Asteroids_Spawner : MonoBehaviour
     [Header("Scene References")]
     [SerializeField] private RectTransform _playfield;
     [SerializeField] private RectTransform _ship;
+    [SerializeField] private RectTransform _asteroidContainer; 
 
     [Header("Asteroid Prefabs")]
-    [SerializeField] private RectTransform[] _asteroidPrefabs; 
+    [SerializeField] private RectTransform[] _asteroidPrefabs;
 
     [Header("Spawning")]
     [SerializeField] private float _spawnIntervalMin = 0.8f;
@@ -56,12 +57,14 @@ public class Asteroids_Spawner : MonoBehaviour
 
     private void SpawnOne()
     {
-        // Pick a random prefab from your list
         RectTransform prefab = _asteroidPrefabs[Random.Range(0, _asteroidPrefabs.Length)];
         if (prefab == null) return;
 
         Vector2 spawnPos = GetOutsideSpawnPos();
-        RectTransform a = Instantiate(prefab, _playfield);
+
+        // Spawn into the Asteroid Container if assigned, otherwise default to playfield
+        RectTransform parent = _asteroidContainer != null ? _asteroidContainer : _playfield;
+        RectTransform a = Instantiate(prefab, parent);
         a.anchoredPosition = spawnPos;
         a.localPosition = new Vector3(a.localPosition.x, a.localPosition.y, 0f);
 
@@ -84,8 +87,8 @@ public class Asteroids_Spawner : MonoBehaviour
         switch (side)
         {
             case 0: x = -half.x - m; y = Random.Range(-half.y, half.y); break; // left
-            case 1: x = half.x + m; y = Random.Range(-half.y, half.y); break; // right
-            case 2: x = Random.Range(-half.x, half.x); y = half.y + m; break; // top
+            case 1: x = half.x + m; y = Random.Range(-half.y, half.y); break;  // right
+            case 2: x = Random.Range(-half.x, half.x); y = half.y + m; break;  // top
             case 3: x = Random.Range(-half.x, half.x); y = -half.y - m; break; // bottom
         }
         return new Vector2(x, y);
