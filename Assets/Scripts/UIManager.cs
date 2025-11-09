@@ -20,6 +20,9 @@ public class UIManager : MonoBehaviour
     private void Awake() { _instance = this; }
     #endregion
 
+    [SerializeField] private float _sceneIntroFadeDuration = 1.5f;
+    [SerializeField] private bool _fadeInOnSceneStart = true;
+
     [Header("Score")]
     [SerializeField] private TextMeshProUGUI _scoreText;
     [SerializeField] private TextMeshProUGUI _scoreTextShadow;
@@ -110,6 +113,11 @@ public class UIManager : MonoBehaviour
         if (_moonInstance != null) _moonInstance.gameObject.SetActive(false);
 
         _cloudSpawnerRoutine = StartCoroutine(CloudSpawner());
+
+        if (_fadeInOnSceneStart && _blackScreenOverlay != null)
+        {
+            StartCoroutine(FadeFromBlackRoutine(_sceneIntroFadeDuration));
+        }
     }
 
     private void Update()
@@ -411,4 +419,23 @@ public class UIManager : MonoBehaviour
             if (child != null) Destroy(child.gameObject);
         }
     }
+
+    private IEnumerator FadeFromBlackRoutine(float duration)
+    {
+        Color c = _blackScreenOverlay.color;
+        c.a = 1f;
+        _blackScreenOverlay.color = c;
+
+        duration = Mathf.Max(0.01f, duration);
+        for (float t = 0f; t < duration; t += Time.deltaTime)
+        {
+            c.a = Mathf.Lerp(1f, 0f, t / duration);
+            _blackScreenOverlay.color = c;
+            yield return null;
+        }
+
+        c.a = 0f;
+        _blackScreenOverlay.color = c;
+    }
+
 }
