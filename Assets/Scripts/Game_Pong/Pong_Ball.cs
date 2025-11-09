@@ -80,14 +80,13 @@ public class PongBall : MonoBehaviour, IResettableGame
         }
     }
 
+
     void OnEnable()
     {
         EnsureRefs();
         _gameOver = false;
         CancelInvoke(nameof(BeginServe));
-        // TVGameManager will call ResetGame() after activation,
-        // but if someone enables this manually, be safe either way:
-        // No harm if called twice since ResetGame() re-initializes cleanly.
+        ResetAndServe();                 // always reset when the game turns on
     }
 
     void OnDisable()
@@ -96,13 +95,12 @@ public class PongBall : MonoBehaviour, IResettableGame
         _velocity = Vector2.zero;
     }
 
-    // ---- IResettableGame ----
+    // IResettableGame support (still fine to keep)
     public void ResetGame()
     {
-        // Clear transient state and serve fresh
         _gameOver = false;
         _velocity = Vector2.zero;
-        ResetAndServe();  // centers ball and schedules serve
+        ResetAndServe();
     }
 
 
@@ -134,9 +132,6 @@ public class PongBall : MonoBehaviour, IResettableGame
         CancelInvoke(nameof(BeginServe));
 
         UIManager.Instance.TriggerDeathEffects();
-
-        Debug.Log("Game Over! Player missed.");
-        // TRIGGER GAME OVER TRANSITION SEQUENCE THAT AGES THE KID/ROOM AND TRIGGERS A NEW GAME!!! (AR)
     }
 
     void CheckPaddleCollision(RectTransform paddle, bool isLeftPaddle, ref Vector2 ballPos)

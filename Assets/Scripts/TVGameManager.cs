@@ -58,37 +58,64 @@ public class TVGameManager : MonoBehaviour
 
     private void SyncToCurrentlyActiveChild()
     {
-        int activeIdx = _games.FindIndex(go => go.activeSelf);
+        RebuildGamesList();
+        int activeIdx = _games.FindIndex(go => go != null && go.activeSelf);
         if (activeIdx >= 0) _currentIndex = activeIdx;
+        else _currentIndex = Mathf.Clamp(_currentIndex, 0, Mathf.Max(0, _games.Count - 1));
     }
+
 
     private void ActivateGame(int index)
     {
+        RebuildGamesList();
+        if (_games.Count == 0) return;
+
+        // Clamp/wrap safely
+        if (index < 0) index = 0;
+        if (index >= _games.Count) index = 0;
+
+        // Turn ON only the target; OFF others (skip destroyed/null)
         for (int i = 0; i < _games.Count; i++)
-            _games[i].SetActive(i == index);
+        {
+            var go = _games[i];
+            if (go == null) continue;                       // <-- prevents MissingReference
+            bool shouldBeActive = (i == index);
+            if (go.activeSelf != shouldBeActive)
+                go.SetActive(shouldBeActive);
+        }
 
         _currentIndex = index;
-
-        // After activating, call ResetGame() on any implementers in this game subtree.
-        var go = _games[_currentIndex];
-        if (go != null)
-        {
-            var resetters = go.GetComponentsInChildren<IResettableGame>(true);
-            for (int r = 0; r < resetters.Length; r++)
-                resetters[r].ResetGame();
-        }
     }
+
 
 
     public void AdvanceToNextGame()
     {
+        RebuildGamesList();
         if (_games.Count == 0) return;
+
+        // Find the currently active (handles manual changes & destroyed items)
+        SyncToCurrentlyActiveChild();
 
         int next = _currentIndex + 1;
         if (next >= _games.Count) next = 0;
 
         ActivateGame(next);
     }
+
+
+    private void RebuildGamesList()
+    {
+        _games.Clear();
+        if (_tvScreenContainer == null) return;
+
+        foreach (Transform child in _tvScreenContainer)
+        {
+            if (child != null && child.gameObject != null)
+                _games.Add(child.gameObject);
+        }
+    }
+
 
     // Optional helpers if you ever need them:
     public void RestartFromTop() => ActivateGame(0);
