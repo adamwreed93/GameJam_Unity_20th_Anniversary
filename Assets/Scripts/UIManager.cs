@@ -20,41 +20,27 @@ public class UIManager : MonoBehaviour
     private void Awake() { _instance = this; }
     #endregion
 
-    // ---------------------------------------------------------------------
-    // Score
-    // ---------------------------------------------------------------------
-    private int _currentScore;
+    [Header("Score")]
     [SerializeField] private TextMeshProUGUI _scoreText;
     [SerializeField] private TextMeshProUGUI _scoreTextShadow;
+    private int _currentScore;
 
-    // ---------------------------------------------------------------------
-    // Player progression (character models under Player Container)
-    // ---------------------------------------------------------------------
+    [Header("Player Models")]
     [SerializeField] private GameObject _playerContainer;
     private readonly List<GameObject> _playerModels = new List<GameObject>();
     private int _currentPlayerIndex = 0;
 
-    // ---------------------------------------------------------------------
-    // Screen fade overlay
-    // ---------------------------------------------------------------------
+    [Header("Screen Fade")]
     [SerializeField] private Image _blackScreenOverlay;
 
-    // ---------------------------------------------------------------------
-    // Day/Night Sync (single source of truth)
-    // Drives: directional light color, window image color, sun and moon motion
-    // ---------------------------------------------------------------------
     [Header("Day/Night Sync")]
-    [SerializeField] private float _dayNightSpeed = 0.05f;      // phase speed
+    [SerializeField] private float _dayNightSpeed = 0.05f;
     [SerializeField] private Light _directionalLight;
     [SerializeField] private Image _windowFrameContainerImage;
-
-    // Colors
     [SerializeField] private Color _dayLightColor = new Color32(250, 218, 130, 255);
     [SerializeField] private Color _nightLightColor = new Color32(35, 115, 165, 255);
     [SerializeField] private Color _dayWindowColor = new Color32(60, 205, 255, 255);
     [SerializeField] private Color _nightWindowColor = new Color32(50, 60, 70, 255);
-
-    // Celestials
     [SerializeField] private RectTransform _celestialParent;
     [SerializeField] private GameObject _sunPrefab;
     [SerializeField] private GameObject _moonPrefab;
@@ -62,105 +48,79 @@ public class UIManager : MonoBehaviour
     [SerializeField] private float _celestialStartX = -700f;
     [SerializeField] private float _celestialEndX = 700f;
 
-    private float _dayNightPhase = 0f; // 0..1 looping
+    private float _dayNightPhase;
     private RectTransform _sunInstance;
     private RectTransform _moonInstance;
 
-    // ---------------------------------------------------------------------
-    // Clouds
-    // ---------------------------------------------------------------------
     [Header("Clouds")]
     [SerializeField] private RectTransform _cloudParent;
-    [SerializeField] private GameObject[] _cloudPrefabs; // 10 options
+    [SerializeField] private GameObject[] _cloudPrefabs;
     [SerializeField] private float _cloudSpeed = 50f;
     [SerializeField] private float _cloudSpawnRateMin = 3f;
     [SerializeField] private float _cloudSpawnRateMax = 10f;
     [SerializeField] private float _cloudSpawnX = 800f;
     [SerializeField] private float _cloudDespawnX = -800f;
     [SerializeField] private Vector2 _cloudSpawnYRange = new Vector2(-280f, 280f);
+    [SerializeField] private Color _dayCloudColor = new Color32(255, 255, 255, 255);
+    [SerializeField] private Color _nightCloudColor = new Color32(125, 150, 220, 255);
 
     private readonly List<RectTransform> _activeClouds = new List<RectTransform>();
     private Coroutine _cloudSpawnerRoutine;
 
-    [SerializeField] private Color _dayCloudColor = new Color32(255, 255, 255, 255);
-    [SerializeField] private Color _nightCloudColor = new Color32(125, 150, 220, 255);
-
-    // ---------------------------------------------------------------------
-    // Death Effects (temporary speed-up and fade)
-    // ---------------------------------------------------------------------
     [Header("Death Effects")]
     [SerializeField] private float _deathCloudSpeedMultiplier = 2f;
-    [SerializeField] private float _deathDayNightSpeedMultiplier = 2f;  // speeds up colors and celestials together
-    [SerializeField] private float _deathCloudSpawnIntervalScale = 0.5f; // < 1 = faster spawns
+    [SerializeField] private float _deathDayNightSpeedMultiplier = 2f;
+    [SerializeField] private float _deathCloudSpawnIntervalScale = 0.5f;
     [SerializeField] private float _deathFadeDuration = 2f;
     [SerializeField] private float _deathBlackHoldTime = 0.5f;
     [SerializeField] private float _deathPhaseDuration = 3f;
 
-    private bool _deathEffectsActive = false;
-
-    // Originals to restore
+    private bool _deathEffectsActive;
     private float _origDayNightSpeed;
     private float _origCloudSpeed, _origSpawnMin, _origSpawnMax;
 
-    // ---------------------------------------------------------------------
-    // End Text (appears after final fade to black)
-    // ---------------------------------------------------------------------
-    [SerializeField] private TextMeshProUGUI _endText1;   // e.g. "The End"
-    [SerializeField] private TextMeshProUGUI _endText2;   // e.g. "Thanks for Playing"
+    [Header("End Texts")]
+    [SerializeField] private TextMeshProUGUI _endText1;
+    [SerializeField] private TextMeshProUGUI _endText2;
+    [SerializeField] private TextMeshProUGUI _endText3;
     [SerializeField] private float _textFadeDuration = 1.5f;
     [SerializeField] private float _delayBetweenTexts = 1f;
     [SerializeField] private float _delayBeforeFirstText = 0.5f;
-
-    [SerializeField] private TextMeshProUGUI _restartText;   // "Press R to Restart"
+    [SerializeField] private TextMeshProUGUI _restartText;
     [SerializeField] private float _restartTextDelayAfterSecond = 1.5f;
 
-    private bool _isGameOver = false;
-
+    private bool _isGameOver;
 
     private void Start()
     {
-        // Cache player models and set only the first active
         if (_playerContainer != null)
         {
             _playerModels.Clear();
             foreach (Transform child in _playerContainer.transform)
                 _playerModels.Add(child.gameObject);
-
             for (int i = 0; i < _playerModels.Count; i++)
                 _playerModels[i].SetActive(i == 0);
         }
 
-        // Create persistent sun and moon (we toggle them during phase)
         if (_sunPrefab != null && _celestialParent != null)
             _sunInstance = Instantiate(_sunPrefab, _celestialParent).GetComponent<RectTransform>();
         if (_moonPrefab != null && _celestialParent != null)
             _moonInstance = Instantiate(_moonPrefab, _celestialParent).GetComponent<RectTransform>();
-
         if (_sunInstance != null) _sunInstance.gameObject.SetActive(true);
         if (_moonInstance != null) _moonInstance.gameObject.SetActive(false);
 
-        // Start cloud spawning
         _cloudSpawnerRoutine = StartCoroutine(CloudSpawner());
     }
 
     private void Update()
     {
-        if (_isGameOver == true)
-        {
-            if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
-            {
-                // Restart the scene
-                UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
-            }
-        }
+        if (_isGameOver && Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
 
         UpdateDayNightSync();
         UpdateClouds();
     }
 
-    // ---------------------------------------------------------------------
-    // Public API
-    // ---------------------------------------------------------------------
     public void UpdateScoreText(int score)
     {
         _currentScore += score;
@@ -173,62 +133,50 @@ public class UIManager : MonoBehaviour
         if (_deathEffectsActive) return;
         _deathEffectsActive = true;
 
-        // Save originals now (before we boost)
+        ClearAllBulletsByName();
+
         _origDayNightSpeed = _dayNightSpeed;
         _origCloudSpeed = _cloudSpeed;
         _origSpawnMin = _cloudSpawnRateMin;
         _origSpawnMax = _cloudSpawnRateMax;
 
-        // Start fade; boosts will be applied when fully black inside the fade routine
         FadeBlackScreen(_deathFadeDuration);
     }
 
-    // ---------------------------------------------------------------------
-    // Day/Night sync
-    // ---------------------------------------------------------------------
     private void UpdateDayNightSync()
     {
-        // Advance shared phase 0..1
-        _dayNightPhase += Time.deltaTime * _dayNightSpeed;
-        if (_dayNightPhase >= 1f) _dayNightPhase -= 1f;
-
-        // Color blend with phase offset so: sun midpoint = brightest day, moon midpoint = darkest night
+        _dayNightPhase = Mathf.Repeat(_dayNightPhase + Time.deltaTime * Mathf.Max(0f, _dayNightSpeed), 1f);
         float colorBlend = 0.5f - 0.5f * Mathf.Cos(2f * Mathf.PI * (_dayNightPhase - 0.25f));
 
         if (_directionalLight != null)
             _directionalLight.color = Color.Lerp(_dayLightColor, _nightLightColor, colorBlend);
-
         if (_windowFrameContainerImage != null)
             _windowFrameContainerImage.color = Color.Lerp(_dayWindowColor, _nightWindowColor, colorBlend);
 
-        // Celestial motion driven by the same phase
         if (_sunInstance != null && _moonInstance != null)
         {
             if (_dayNightPhase < 0.5f)
             {
-                float progress = Mathf.InverseLerp(0f, 0.5f, _dayNightPhase); // 0..1
+                float progress = Mathf.InverseLerp(0f, 0.5f, _dayNightPhase);
                 _sunInstance.gameObject.SetActive(true);
                 _moonInstance.gameObject.SetActive(false);
                 MoveCelestial(_sunInstance, progress);
             }
             else
             {
-                float progress = Mathf.InverseLerp(0.5f, 1f, _dayNightPhase); // 0..1
+                float progress = Mathf.InverseLerp(0.5f, 1f, _dayNightPhase);
                 _sunInstance.gameObject.SetActive(false);
                 _moonInstance.gameObject.SetActive(true);
                 MoveCelestial(_moonInstance, progress);
             }
         }
 
-        Color currentCloudColor = Color.Lerp(_dayCloudColor, _nightCloudColor, colorBlend);
+        Color cloudColor = Color.Lerp(_dayCloudColor, _nightCloudColor, colorBlend);
         foreach (RectTransform cloud in _activeClouds)
         {
-            if (cloud != null)
-            {
-                Image image = cloud.GetComponent<Image>();
-                if (image != null)
-                    image.color = currentCloudColor;
-            }
+            if (cloud == null) continue;
+            Image img = cloud.GetComponent<Image>();
+            if (img != null) img.color = cloudColor;
         }
     }
 
@@ -238,9 +186,6 @@ public class UIManager : MonoBehaviour
         target.anchoredPosition = new Vector2(x, _celestialY);
     }
 
-    // ---------------------------------------------------------------------
-    // Clouds
-    // ---------------------------------------------------------------------
     private void UpdateClouds()
     {
         for (int i = _activeClouds.Count - 1; i >= 0; i--)
@@ -262,151 +207,114 @@ public class UIManager : MonoBehaviour
 
     private IEnumerator CloudSpawner()
     {
+        if (_cloudParent == null || _cloudPrefabs == null || _cloudPrefabs.Length == 0)
+            yield break;
+
         while (true)
         {
             SpawnCloud();
-            float waitTime = Random.Range(_cloudSpawnRateMin, _cloudSpawnRateMax);
-            yield return new WaitForSeconds(waitTime);
+            float wait = Random.Range(_cloudSpawnRateMin, _cloudSpawnRateMax);
+            yield return new WaitForSeconds(wait);
         }
     }
 
     private void SpawnCloud()
     {
-        if (_cloudPrefabs == null || _cloudPrefabs.Length == 0 || _cloudParent == null) return;
+        if (_cloudParent == null || _cloudPrefabs.Length == 0) return;
 
         int index = Random.Range(0, _cloudPrefabs.Length);
         GameObject cloud = Instantiate(_cloudPrefabs[index], _cloudParent);
         RectTransform rect = cloud.GetComponent<RectTransform>();
         if (rect == null) { Destroy(cloud); return; }
 
-        float spawnY = Random.Range(_cloudSpawnYRange.x, _cloudSpawnYRange.y);
-        rect.anchoredPosition = new Vector2(_cloudSpawnX, spawnY);
+        float y = Random.Range(_cloudSpawnYRange.x, _cloudSpawnYRange.y);
+        rect.anchoredPosition = new Vector2(_cloudSpawnX, y);
+        rect.localPosition = new Vector3(rect.localPosition.x, rect.localPosition.y, 0f);
         _activeClouds.Add(rect);
     }
 
-    // ---------------------------------------------------------------------
-    // Restore after death effects
-    // ---------------------------------------------------------------------
     private IEnumerator RestoreAfter(float seconds)
     {
         yield return new WaitForSeconds(seconds);
-
         _dayNightSpeed = _origDayNightSpeed;
         _cloudSpeed = _origCloudSpeed;
         _cloudSpawnRateMin = _origSpawnMin;
         _cloudSpawnRateMax = _origSpawnMax;
         _deathEffectsActive = false;
-
         if (_cloudSpawnerRoutine != null) StopCoroutine(_cloudSpawnerRoutine);
         _cloudSpawnerRoutine = StartCoroutine(CloudSpawner());
     }
 
-    // ---------------------------------------------------------------------
-    // Player model progression
-    // ---------------------------------------------------------------------
     private void AdvancePlayerModel()
     {
         if (_playerModels.Count == 0) return;
-
         _playerModels[_currentPlayerIndex].SetActive(false);
         _currentPlayerIndex = Mathf.Min(_currentPlayerIndex + 1, _playerModels.Count - 1);
         _playerModels[_currentPlayerIndex].SetActive(true);
     }
 
-    // ---------------------------------------------------------------------
-    // Fade to black -> advance player -> fade back to transparent
-    // ---------------------------------------------------------------------
-    private void FadeBlackScreen(float totalDuration)
+    private void FadeBlackScreen(float duration)
     {
         if (_blackScreenOverlay == null) return;
-        StartCoroutine(FadeBlackScreenRoutine(totalDuration));
+        StartCoroutine(FadeBlackScreenRoutine(duration));
     }
 
     private void ApplyDeathBoostsAndStartRestore()
     {
-        // Apply boosts (player will not see the change yet because screen is black)
-        _dayNightSpeed *= _deathDayNightSpeedMultiplier;  // colors + sun/moon speed together
+        _dayNightSpeed *= _deathDayNightSpeedMultiplier;
         _cloudSpeed *= _deathCloudSpeedMultiplier;
         _cloudSpawnRateMin *= _deathCloudSpawnIntervalScale;
         _cloudSpawnRateMax *= _deathCloudSpawnIntervalScale;
-
-        // Restart spawner so new intervals apply immediately
         if (_cloudSpawnerRoutine != null) StopCoroutine(_cloudSpawnerRoutine);
         _cloudSpawnerRoutine = StartCoroutine(CloudSpawner());
-
-        // Begin timer to return to normal
         StartCoroutine(RestoreAfter(_deathPhaseDuration));
     }
 
-    private IEnumerator FadeBlackScreenRoutine(float totalDuration)
+    private IEnumerator FadeBlackScreenRoutine(float duration)
     {
-        float holdTime = _deathBlackHoldTime;
-        float fadeDuration = Mathf.Max(0.01f, (totalDuration - holdTime) * 0.5f);
+        float hold = _deathBlackHoldTime;
+        float fade = Mathf.Max(0.01f, (duration - hold) * 0.5f);
 
-        Color overlayColor = _blackScreenOverlay.color;
-        overlayColor.a = 0f;
-        _blackScreenOverlay.color = overlayColor;
+        Color c = _blackScreenOverlay.color;
+        c.a = 0f;
+        _blackScreenOverlay.color = c;
 
-        // Fade to black
-        for (float elapsed = 0f; elapsed < fadeDuration; elapsed += Time.deltaTime)
+        for (float t = 0; t < fade; t += Time.deltaTime)
         {
-            overlayColor.a = Mathf.Lerp(0f, 1f, elapsed / fadeDuration);
-            _blackScreenOverlay.color = overlayColor;
+            c.a = Mathf.Lerp(0f, 1f, t / fade);
+            _blackScreenOverlay.color = c;
             yield return null;
         }
-        overlayColor.a = 1f;
-        _blackScreenOverlay.color = overlayColor;
+        c.a = 1f;
+        _blackScreenOverlay.color = c;
 
-        // Determine if this death happens on the final character
-        bool finalLife = IsOnFinalPlayerModel(); // FINAL-LIFE: check before advancing
+        bool final = IsOnFinalPlayerModel();
 
-        if (!finalLife)
+        if (!final)
         {
-            // Swap model while black
             AdvancePlayerModel();
-
-            // If you're cycling mini-games, do it invisibly here (optional)
             if (TVGameManager.Instance != null)
                 TVGameManager.Instance.AdvanceToNextGame();
-
-            // APPLY BOOSTS NOW (player can't see the speed-up yet)
             ApplyDeathBoostsAndStartRestore();
-
-            // Hold at black, then fade back out as usual
-            yield return new WaitForSeconds(holdTime);
-
-            // Fade back to transparent
-            for (float elapsed = 0f; elapsed < fadeDuration; elapsed += Time.deltaTime)
+            yield return new WaitForSeconds(hold);
+            for (float t = 0; t < fade; t += Time.deltaTime)
             {
-                overlayColor.a = Mathf.Lerp(1f, 0f, elapsed / fadeDuration);
-                _blackScreenOverlay.color = overlayColor;
+                c.a = Mathf.Lerp(1f, 0f, t / fade);
+                _blackScreenOverlay.color = c;
                 yield return null;
             }
-            overlayColor.a = 0f;
-            _blackScreenOverlay.color = overlayColor;
+            c.a = 0f;
+            _blackScreenOverlay.color = c;
         }
         else
         {
-            // FINAL-LIFE: stay black permanently and stop transient activity
-
-            // Stop cloud spawning to keep things quiet
             if (_cloudSpawnerRoutine != null) StopCoroutine(_cloudSpawnerRoutine);
             _cloudSpawnerRoutine = null;
-
-            // Optionally freeze motion systems (safe to omit if you prefer)
             _dayNightSpeed = 0f;
             _cloudSpeed = 0f;
-
-            // Keep death effects "active" so they can't be retriggered
-            // (we intentionally do NOT call ApplyDeathBoostsAndStartRestore)
-            // No fade-out, just end the coroutine here.
-
-            // Kick off the two-text fade sequence
             StartCoroutine(ShowFinalTextSequence());
-            yield break;
         }
     }
-
 
     private bool IsOnFinalPlayerModel()
     {
@@ -415,27 +323,30 @@ public class UIManager : MonoBehaviour
 
     private IEnumerator ShowFinalTextSequence()
     {
-        // Optional pause on full black
         yield return new WaitForSeconds(_delayBeforeFirstText);
 
-        // --- First text ---
         if (_endText1 != null)
         {
             _endText1.gameObject.SetActive(true);
             yield return StartCoroutine(FadeTextIn(_endText1, _textFadeDuration));
         }
 
-        // Wait before showing second
         yield return new WaitForSeconds(_delayBetweenTexts);
 
-        // --- Second text ---
         if (_endText2 != null)
         {
             _endText2.gameObject.SetActive(true);
             yield return StartCoroutine(FadeTextIn(_endText2, _textFadeDuration));
         }
 
-        // Wait a moment, then show looping restart text
+        yield return new WaitForSeconds(_delayBetweenTexts);
+
+        if (_endText3 != null)
+        {
+            _endText3.gameObject.SetActive(true);
+            yield return StartCoroutine(FadeTextIn(_endText3, _textFadeDuration));
+        }
+
         yield return new WaitForSeconds(_restartTextDelayAfterSecond);
 
         if (_restartText != null)
@@ -444,19 +355,16 @@ public class UIManager : MonoBehaviour
             _isGameOver = true;
             StartCoroutine(FadeTextLoop(_restartText));
         }
-
     }
 
     private IEnumerator FadeTextIn(TextMeshProUGUI text, float duration)
     {
         if (text == null) yield break;
-
         Color c = text.color;
         c.a = 0f;
         text.color = c;
-
         duration = Mathf.Max(0.01f, duration);
-        for (float t = 0f; t < duration; t += Time.deltaTime)
+        for (float t = 0; t < duration; t += Time.deltaTime)
         {
             c.a = Mathf.Lerp(0f, 1f, t / duration);
             text.color = c;
@@ -469,32 +377,38 @@ public class UIManager : MonoBehaviour
     private IEnumerator FadeTextLoop(TextMeshProUGUI text)
     {
         if (text == null) yield break;
-
-        Color color = text.color;
-        float minAlpha = 0.1f;
-        float maxAlpha = 1f;
-        float duration = 1f;
-
-        color.a = minAlpha;
-        text.color = color;
+        Color c = text.color;
+        float min = 0.1f;
+        float max = 1f;
+        float dur = 1f;
+        c.a = min;
+        text.color = c;
 
         while (true)
         {
-            // Fade in
-            for (float t = 0; t < duration; t += Time.deltaTime)
+            for (float t = 0; t < dur; t += Time.deltaTime)
             {
-                color.a = Mathf.Lerp(minAlpha, maxAlpha, t / duration);
-                text.color = color;
+                c.a = Mathf.Lerp(min, max, t / dur);
+                text.color = c;
                 yield return null;
             }
+            for (float t = 0; t < dur; t += Time.deltaTime)
+            {
+                c.a = Mathf.Lerp(max, min, t / dur);
+                text.color = c;
+                yield return null;
+            }
+        }
+    }
 
-            // Fade out
-            for (float t = 0; t < duration; t += Time.deltaTime)
-            {
-                color.a = Mathf.Lerp(maxAlpha, minAlpha, t / duration);
-                text.color = color;
-                yield return null;
-            }
+    private void ClearAllBulletsByName()
+    {
+        Transform bulletContainer = GameObject.Find("Bullet Container")?.transform;
+        if (bulletContainer == null) return;
+        for (int i = bulletContainer.childCount - 1; i >= 0; i--)
+        {
+            Transform child = bulletContainer.GetChild(i);
+            if (child != null) Destroy(child.gameObject);
         }
     }
 }
