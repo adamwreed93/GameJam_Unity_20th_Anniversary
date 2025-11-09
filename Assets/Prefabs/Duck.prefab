@@ -92,3 +92,4 @@ MonoBehaviour:
   _jitterAmp: 120
   _jitterFreq: 3
   _lifetime: 4.5
+  _offscreenPad: 0

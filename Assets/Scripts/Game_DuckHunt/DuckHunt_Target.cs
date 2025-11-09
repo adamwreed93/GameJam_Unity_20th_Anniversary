@@ -8,12 +8,17 @@ public class DuckHunt_Target : MonoBehaviour
     [SerializeField] private float _jitterFreq = 3f;
     [SerializeField] private float _lifetime = 4.5f;
 
+    [Header("Bounds")]
+    [SerializeField] private float _offscreenPad = 0f; // 0 = despawn exactly at edge
+
     private RectTransform _rect;
     private RectTransform _playfield;
     private System.Action<DuckHunt_Target, bool> _onGone;
-    private Vector2 _dir;           // base direction (normalized)
+    private Vector2 _dir;
     private float _t;
-    private float _sideSign;        // perpendicular for sine wobble
+    private float _sideSign;
+
+    private bool _hasEnteredScreen; // ensures we only count a miss after it was visible at least once
 
     private static readonly Vector3[] _corners = new Vector3[4];
     private static readonly Vector3[] _pfCorners = new Vector3[4];
@@ -37,8 +42,8 @@ public class DuckHunt_Target : MonoBehaviour
         _jitterFreq = Mathf.Max(0.01f, jitterFreq);
         _onGone = onGone;
         _t = 0f;
+        _hasEnteredScreen = false;
 
-        // choose a consistent perpendicular for wobble
         Vector2 perp = new Vector2(-_dir.y, _dir.x);
         _sideSign = Mathf.Sign(Random.Range(-1f, 1f));
         if (Mathf.Abs(_sideSign) < 0.5f) _sideSign = 1f;
@@ -55,36 +60,40 @@ public class DuckHunt_Target : MonoBehaviour
         Vector2 pos = _rect.anchoredPosition;
         pos += _dir * _speed * Time.deltaTime;
 
-        // sine wobble perpendicular to direction
+        // sine wobble perpendicular to direction (smooth)
         if (_sideSign != 0f)
         {
             Vector2 perp = new Vector2(-_dir.y, _dir.x);
-            float wobble = Mathf.Sin(_t * _jitterFreq) * _jitterAmp * _sideSign;
-            pos += perp * wobble * Time.deltaTime; // smooth wobble offset over time
+            float wobble = Mathf.Sin(_t * _jitterFreq) * _jitterAmp;
+            pos += perp * (wobble * _sideSign) * Time.deltaTime;
         }
 
         _rect.anchoredPosition = pos;
 
-        // lifetime
-        if (_t >= _lifetime)
-        {
-            _onGone?.Invoke(this, false); // false = expired
-            Destroy(gameObject);
-            return;
-        }
-
-        // offscreen check with padding
+        // bounds check
         if (_playfield != null)
         {
             Rect r = WorldRect(_rect, _corners);
-            Rect pf = WorldRect(_playfield, _pfCorners);
-            float pad = 200f;
-            if (r.xMax < pf.xMin - pad || r.xMin > pf.xMax + pad || r.yMax < pf.yMin - pad || r.yMin > pf.yMax + pad)
+            Rect pf = InflateRect(WorldRect(_playfield, _pfCorners), -_offscreenPad);
+
+            // mark when we've actually been visible
+            if (!_hasEnteredScreen && r.Overlaps(pf)) _hasEnteredScreen = true;
+
+            // once entered, treat leaving immediately as a miss
+            if (_hasEnteredScreen && !r.Overlaps(pf))
             {
-                _onGone?.Invoke(this, false); // left screen
+                _onGone?.Invoke(this, false); // missed
                 Destroy(gameObject);
                 return;
             }
+        }
+
+        // lifetime fallback
+        if (_t >= _lifetime)
+        {
+            _onGone?.Invoke(this, false);
+            Destroy(gameObject);
+            return;
         }
     }
 
@@ -100,5 +109,10 @@ public class DuckHunt_Target : MonoBehaviour
         Vector2 bl = new Vector2(buf[0].x, buf[0].y);
         Vector2 tr = new Vector2(buf[2].x, buf[2].y);
         return new Rect(bl, tr - bl);
+    }
+
+    private static Rect InflateRect(Rect r, float inset) // negative inset shrinks
+    {
+        return new Rect(r.x + inset, r.y + inset, r.width - inset * 2f, r.height - inset * 2f);
     }
 }
