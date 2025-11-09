@@ -27,18 +27,3 @@ public class Pong_PlayerPaddle : MonoBehaviour
         _playerPaddle.anchoredPosition = pos;
     }
 }
-
-//When Pong is active
-
-//Set paddle movement speed
-
-//Get user input for up and down
-// Move the Left Paddle up and down between -185 x 185
-
-//Ball bounces off of paddles
-
-//Make Right paddle AI track the ball and then choose to either miss or not miss. (chance to miss is 5%)
-
-//10 points awarded to player for every hit. 100 points if the enmey misses
-
-//If player misses then say game over, fade to black, Age the player character, start next game

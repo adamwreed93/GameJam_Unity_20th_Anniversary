@@ -100,6 +100,9 @@ public class PongBall : MonoBehaviour
         _velocity = Vector2.zero;
         _gameOver = true;
         CancelInvoke(nameof(BeginServe));
+
+        UIManager.Instance.TriggerDeathEffects();
+
         Debug.Log("Game Over! Player missed.");
         // TRIGGER GAME OVER TRANSITION SEQUENCE THAT AGES THE KID/ROOM AND TRIGGERS A NEW GAME!!! (AR)
     }
