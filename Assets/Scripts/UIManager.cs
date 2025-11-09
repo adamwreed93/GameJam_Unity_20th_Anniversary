@@ -102,8 +102,15 @@ public class UIManager : MonoBehaviour
     private float _origCloudSpeed, _origSpawnMin, _origSpawnMax;
 
     // ---------------------------------------------------------------------
-    // Unity messages
+    // End Text (appears after final fade to black)
     // ---------------------------------------------------------------------
+    [SerializeField] private TextMeshProUGUI _endText1;   // e.g. "The End"
+    [SerializeField] private TextMeshProUGUI _endText2;   // e.g. "Thanks for Playing"
+    [SerializeField] private float _textFadeDuration = 1.5f;
+    [SerializeField] private float _delayBetweenTexts = 1f;
+    [SerializeField] private float _delayBeforeFirstText = 0.5f;
+
+
     private void Start()
     {
         // Cache player models and set only the first active
@@ -335,26 +342,102 @@ public class UIManager : MonoBehaviour
         overlayColor.a = 1f;
         _blackScreenOverlay.color = overlayColor;
 
-        // Swap model while black
-        AdvancePlayerModel();
+        // Determine if this death happens on the final character
+        bool finalLife = IsOnFinalPlayerModel(); // FINAL-LIFE: check before advancing
 
-        if (TVGameManager.Instance != null)
-            TVGameManager.Instance.AdvanceToNextGame();
-
-        // APPLY BOOSTS NOW (player can't see the speed-up yet)
-        ApplyDeathBoostsAndStartRestore();
-
-        // Hold at black
-        yield return new WaitForSeconds(holdTime);
-
-        // Fade back to transparent
-        for (float elapsed = 0f; elapsed < fadeDuration; elapsed += Time.deltaTime)
+        if (!finalLife)
         {
-            overlayColor.a = Mathf.Lerp(1f, 0f, elapsed / fadeDuration);
+            // Swap model while black
+            AdvancePlayerModel();
+
+            // If you're cycling mini-games, do it invisibly here (optional)
+            if (TVGameManager.Instance != null)
+                TVGameManager.Instance.AdvanceToNextGame();
+
+            // APPLY BOOSTS NOW (player can't see the speed-up yet)
+            ApplyDeathBoostsAndStartRestore();
+
+            // Hold at black, then fade back out as usual
+            yield return new WaitForSeconds(holdTime);
+
+            // Fade back to transparent
+            for (float elapsed = 0f; elapsed < fadeDuration; elapsed += Time.deltaTime)
+            {
+                overlayColor.a = Mathf.Lerp(1f, 0f, elapsed / fadeDuration);
+                _blackScreenOverlay.color = overlayColor;
+                yield return null;
+            }
+            overlayColor.a = 0f;
             _blackScreenOverlay.color = overlayColor;
+        }
+        else
+        {
+            // FINAL-LIFE: stay black permanently and stop transient activity
+
+            // Stop cloud spawning to keep things quiet
+            if (_cloudSpawnerRoutine != null) StopCoroutine(_cloudSpawnerRoutine);
+            _cloudSpawnerRoutine = null;
+
+            // Optionally freeze motion systems (safe to omit if you prefer)
+            _dayNightSpeed = 0f;
+            _cloudSpeed = 0f;
+
+            // Keep death effects "active" so they can't be retriggered
+            // (we intentionally do NOT call ApplyDeathBoostsAndStartRestore)
+            // No fade-out, just end the coroutine here.
+
+            // Kick off the two-text fade sequence
+            StartCoroutine(ShowFinalTextSequence());
+            yield break;
+        }
+    }
+
+
+    private bool IsOnFinalPlayerModel()
+    {
+        return _playerModels.Count == 0 || _currentPlayerIndex >= _playerModels.Count - 1;
+    }
+
+    private IEnumerator ShowFinalTextSequence()
+    {
+        // Optional pause on full black
+        yield return new WaitForSeconds(_delayBeforeFirstText);
+
+        // --- First text ---
+        if (_endText1 != null)
+        {
+            _endText1.gameObject.SetActive(true);
+            yield return StartCoroutine(FadeTextIn(_endText1, _textFadeDuration));
+        }
+
+        // Wait before showing second
+        yield return new WaitForSeconds(_delayBetweenTexts);
+
+        // --- Second text ---
+        if (_endText2 != null)
+        {
+            _endText2.gameObject.SetActive(true);
+            yield return StartCoroutine(FadeTextIn(_endText2, _textFadeDuration));
+        }
+    }
+
+    private IEnumerator FadeTextIn(TextMeshProUGUI text, float duration)
+    {
+        if (text == null) yield break;
+
+        Color c = text.color;
+        c.a = 0f;
+        text.color = c;
+
+        duration = Mathf.Max(0.01f, duration);
+        for (float t = 0f; t < duration; t += Time.deltaTime)
+        {
+            c.a = Mathf.Lerp(0f, 1f, t / duration);
+            text.color = c;
             yield return null;
         }
-        overlayColor.a = 0f;
-        _blackScreenOverlay.color = overlayColor;
+        c.a = 1f;
+        text.color = c;
     }
+
 }
