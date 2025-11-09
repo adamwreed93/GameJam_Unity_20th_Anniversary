@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.InputSystem;
 
 public class UIManager : MonoBehaviour
 {
@@ -110,6 +111,11 @@ public class UIManager : MonoBehaviour
     [SerializeField] private float _delayBetweenTexts = 1f;
     [SerializeField] private float _delayBeforeFirstText = 0.5f;
 
+    [SerializeField] private TextMeshProUGUI _restartText;   // "Press R to Restart"
+    [SerializeField] private float _restartTextDelayAfterSecond = 1.5f;
+
+    private bool _isGameOver = false;
+
 
     private void Start()
     {
@@ -139,6 +145,15 @@ public class UIManager : MonoBehaviour
 
     private void Update()
     {
+        if (_isGameOver == true)
+        {
+            if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+            {
+                // Restart the scene
+                UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+            }
+        }
+
         UpdateDayNightSync();
         UpdateClouds();
     }
@@ -419,6 +434,17 @@ public class UIManager : MonoBehaviour
             _endText2.gameObject.SetActive(true);
             yield return StartCoroutine(FadeTextIn(_endText2, _textFadeDuration));
         }
+
+        // Wait a moment, then show looping restart text
+        yield return new WaitForSeconds(_restartTextDelayAfterSecond);
+
+        if (_restartText != null)
+        {
+            _restartText.gameObject.SetActive(true);
+            _isGameOver = true;
+            StartCoroutine(FadeTextLoop(_restartText));
+        }
+
     }
 
     private IEnumerator FadeTextIn(TextMeshProUGUI text, float duration)
@@ -440,4 +466,35 @@ public class UIManager : MonoBehaviour
         text.color = c;
     }
 
+    private IEnumerator FadeTextLoop(TextMeshProUGUI text)
+    {
+        if (text == null) yield break;
+
+        Color color = text.color;
+        float minAlpha = 0.1f;
+        float maxAlpha = 1f;
+        float duration = 1f;
+
+        color.a = minAlpha;
+        text.color = color;
+
+        while (true)
+        {
+            // Fade in
+            for (float t = 0; t < duration; t += Time.deltaTime)
+            {
+                color.a = Mathf.Lerp(minAlpha, maxAlpha, t / duration);
+                text.color = color;
+                yield return null;
+            }
+
+            // Fade out
+            for (float t = 0; t < duration; t += Time.deltaTime)
+            {
+                color.a = Mathf.Lerp(maxAlpha, minAlpha, t / duration);
+                text.color = color;
+                yield return null;
+            }
+        }
+    }
 }
