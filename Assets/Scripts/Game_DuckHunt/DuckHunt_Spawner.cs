@@ -7,6 +7,7 @@ public class DuckHunt_Spawner : MonoBehaviour
     [Header("Scene")]
     [SerializeField] private RectTransform _playfield;
     [SerializeField] private RectTransform _targetContainer;
+    [SerializeField] private GameObject _livesContainer; // new
 
     [Header("Targets")]
     [SerializeField] private RectTransform[] _targetPrefabs;
@@ -18,13 +19,12 @@ public class DuckHunt_Spawner : MonoBehaviour
     [SerializeField] private int _maxConcurrent = 6;
     [SerializeField] private int _scorePerHit = 20;
 
-    [Header("Fail")]
-    [SerializeField] private int _missLimit = 3;
-
     private readonly List<DuckHunt_Target> _active = new List<DuckHunt_Target>();
     private Coroutine _loop;
+
     private int _misses;
     private bool _ended;
+    private List<UnityEngine.UI.Image> _lifeIcons = new List<UnityEngine.UI.Image>();
 
     private static readonly Vector3[] _pfCorners = new Vector3[4];
 
@@ -32,6 +32,7 @@ public class DuckHunt_Spawner : MonoBehaviour
     {
         _misses = 0;
         _ended = false;
+        CacheLives();
         _loop = StartCoroutine(SpawnLoop());
     }
 
@@ -39,9 +40,24 @@ public class DuckHunt_Spawner : MonoBehaviour
     {
         if (_loop != null) StopCoroutine(_loop);
         _loop = null;
+
         for (int i = _active.Count - 1; i >= 0; i--)
             if (_active[i] != null) Destroy(_active[i].gameObject);
         _active.Clear();
+    }
+
+    private void CacheLives()
+    {
+        _lifeIcons.Clear();
+        if (_livesContainer != null)
+        {
+            foreach (Transform child in _livesContainer.transform)
+            {
+                var img = child.GetComponent<UnityEngine.UI.Image>();
+                if (img != null) img.enabled = true; // reset all visible
+                _lifeIcons.Add(img);
+            }
+        }
     }
 
     private IEnumerator SpawnLoop()
@@ -101,29 +117,33 @@ public class DuckHunt_Spawner : MonoBehaviour
     private void OnTargetGone(DuckHunt_Target t, bool hit)
     {
         if (_ended) return;
-
         _active.Remove(t);
 
         if (!hit)
         {
             _misses++;
-            if (_misses >= _missLimit)
+            DisableLifeIcon(_misses - 1); // turn off one heart
+
+            if (_misses >= _lifeIcons.Count)
             {
                 _ended = true;
                 if (_loop != null) StopCoroutine(_loop);
                 _loop = null;
 
-                // cleanup
-                for (int i = _active.Count - 1; i >= 0; i--)
-                    if (_active[i] != null) Destroy(_active[i].gameObject);
+                foreach (var target in _active)
+                    if (target != null) Destroy(target.gameObject);
                 _active.Clear();
 
                 if (UIManager.Instance != null)
                     UIManager.Instance.TriggerDeathEffects();
-
-                return;
             }
         }
+    }
+
+    private void DisableLifeIcon(int index)
+    {
+        if (index >= 0 && index < _lifeIcons.Count && _lifeIcons[index] != null)
+            _lifeIcons[index].enabled = false;
     }
 
     private void ChooseEdgeSpawn(out Vector2 spawn, out Vector2 dir)
@@ -134,7 +154,7 @@ public class DuckHunt_Spawner : MonoBehaviour
 
         switch (side)
         {
-            case 0: spawn = new Vector2(-half.x + -pad, Random.Range(-half.y * 0.8f, half.y * 0.8f)); dir = Vector2.right; break;
+            case 0: spawn = new Vector2(-half.x - pad, Random.Range(-half.y * 0.8f, half.y * 0.8f)); dir = Vector2.right; break;
             case 1: spawn = new Vector2(half.x + pad, Random.Range(-half.y * 0.8f, half.y * 0.8f)); dir = Vector2.left; break;
             case 2: spawn = new Vector2(Random.Range(-half.x * 0.8f, half.x * 0.8f), half.y + pad); dir = Vector2.down; break;
             default: spawn = new Vector2(Random.Range(-half.x * 0.8f, half.x * 0.8f), -half.y - pad); dir = Vector2.up; break;
