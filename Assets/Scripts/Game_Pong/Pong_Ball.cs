@@ -1,7 +1,8 @@
+using System.Security.Cryptography;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class PongBall : MonoBehaviour
+public class PongBall : MonoBehaviour, IResettableGame
 {
     [Header("Scene References")]
     [SerializeField] private RectTransform _ball;
@@ -24,10 +25,15 @@ public class PongBall : MonoBehaviour
     private Vector2 _queuedServeDir = Vector2.right;
     private bool _gameOver = false;
 
-    void Start()
+    private void EnsureRefs()
     {
         if (_ball == null) _ball = GetComponent<RectTransform>();
-        ResetAndServe();
+    }
+
+    void Start()
+    {
+        EnsureRefs();
+        ResetAndServe(); // first run
     }
 
     void Update()
@@ -73,6 +79,32 @@ public class PongBall : MonoBehaviour
             GameOver();
         }
     }
+
+    void OnEnable()
+    {
+        EnsureRefs();
+        _gameOver = false;
+        CancelInvoke(nameof(BeginServe));
+        // TVGameManager will call ResetGame() after activation,
+        // but if someone enables this manually, be safe either way:
+        // No harm if called twice since ResetGame() re-initializes cleanly.
+    }
+
+    void OnDisable()
+    {
+        CancelInvoke(nameof(BeginServe));
+        _velocity = Vector2.zero;
+    }
+
+    // ---- IResettableGame ----
+    public void ResetGame()
+    {
+        // Clear transient state and serve fresh
+        _gameOver = false;
+        _velocity = Vector2.zero;
+        ResetAndServe();  // centers ball and schedules serve
+    }
+
 
     void ResetAndServe(bool? towardsLeft = null)
     {

@@ -338,6 +338,9 @@ public class UIManager : MonoBehaviour
         // Swap model while black
         AdvancePlayerModel();
 
+        if (TVGameManager.Instance != null)
+            TVGameManager.Instance.AdvanceToNextGame();
+
         // APPLY BOOSTS NOW (player can't see the speed-up yet)
         ApplyDeathBoostsAndStartRestore();
 
